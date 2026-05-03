@@ -1,0 +1,15 @@
+# Maven build
+/target/
+
+# NetBeans config (local only)
+/nbproject/private/
+/nbbuild/
+/nbdist/
+/.nb-gradle/
+
+# Log & temp
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
