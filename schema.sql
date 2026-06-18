@@ -273,6 +273,7 @@ INSERT INTO universitas (kode,nama,singkatan,kota,provinsi,wilayah,akreditasi,we
 -- Data universitas_jurusan (sample data penting)
 INSERT INTO universitas_jurusan (universitas_id,jurusan_id,daya_tampung_snbp,daya_tampung_snbt,peminat_snbp,peminat_snbt,passing_grade_snbt,peluang_masuk,akreditasi_prodi,biaya_kuliah) VALUES
 -- UI
+(1,4,30,50,1500,6000,670.00,4.20,'Unggul',11000000),
 (1,1,35,60,2100,8500,687.50,3.20,'Unggul',12500000),
 (1,3,30,50,1800,7200,682.00,3.50,'Unggul',11000000),
 (1,13,40,70,1500,5000,620.00,6.50,'Unggul',8000000),
@@ -281,6 +282,7 @@ INSERT INTO universitas_jurusan (universitas_id,jurusan_id,daya_tampung_snbp,day
 (1,22,35,60,750,2800,595.00,10.20,'Unggul',7500000),
 (1,28,40,70,3500,12000,720.00,2.10,'Unggul',20000000),
 -- UGM
+(2,4,35,60,1800,7000,680.00,3.50,'Unggul',9500000),
 (2,1,40,70,2500,10000,690.00,2.80,'Unggul',10000000),
 (2,21,50,90,800,3000,560.00,11.00,'Unggul',6500000),
 (2,22,40,70,650,2500,570.00,10.80,'Unggul',6500000),
@@ -288,12 +290,14 @@ INSERT INTO universitas_jurusan (universitas_id,jurusan_id,daya_tampung_snbp,day
 (2,28,35,60,4000,15000,725.00,1.80,'Unggul',22000000),
 (2,5,45,80,1200,5000,650.00,5.50,'Unggul',9000000),
 -- ITB
+(3,4,40,70,2000,8500,685.00,3.00,'Unggul',11500000),
 (3,1,50,90,3000,12500,695.00,2.40,'Unggul',12000000),
 (3,6,45,80,1500,6500,665.00,4.50,'Unggul',11000000),
 (3,5,40,70,1300,5500,660.00,4.80,'Unggul',10500000),
 (3,17,35,60,1800,7000,658.00,4.10,'Unggul',9500000),
 (3,20,40,70,2000,8000,662.00,3.80,'Unggul',10000000),
 -- ITS
+(4,4,35,60,1400,5800,665.00,4.80,'Unggul',9000000),
 (4,1,45,80,2200,9000,680.00,3.10,'Unggul',9000000),
 (4,6,40,70,1400,5800,660.00,4.60,'Unggul',8500000),
 (4,5,40,70,1200,5000,655.00,5.00,'Unggul',8000000),

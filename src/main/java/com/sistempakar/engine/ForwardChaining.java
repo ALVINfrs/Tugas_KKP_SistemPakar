@@ -44,23 +44,33 @@ public class ForwardChaining {
         public int prioritas;
         public String kodeAturan;
         public String namaAturan;
+        
+        // --- TAMBAHAN FITUR BARU: ALASAN & STRATEGI ---
+        public String alasanPakar; 
+        public String strategiTembus;
+        
         public List<RekomendasiUniv> universitas = new ArrayList<>();
 
         public static class RekomendasiUniv {
             public int univJurusanId;
             public String namaUniv;
             public String kota;
+            public String provinsi;     // TAMBAHAN: Provinsi
             public String wilayah;
             public double peluangMasuk;
             public double peluangPersonal;
+            public double fitScore;
             public String akreditasiProdi;
             public String akreditasiUniv;
+            public double passingGradeSnbt; // TAMBAHAN: Passing Grade SNBT
+            public double passingGradeSnbp; // TAMBAHAN: Passing Grade SNBP
+            public long biayaKuliah;    // TAMBAHAN: Biaya Kuliah (UKT)
         }
     }
 
     /**
      * Jalankan forward chaining berdasarkan fakta siswa
-     * @return List rekomendasi jurusan (max 5, sorted by confidence)
+     * @return List rekomendasi jurusan (max 3 untuk Utama, Alt1, Alt2)
      */
     public List<HasilRekomendasi> rekomendasikan(Fakta fakta) {
         List<HasilRekomendasi> hasil = new ArrayList<>();
@@ -87,22 +97,42 @@ public class ForwardChaining {
                     hasil1.prioritas  = rs.getInt("prioritas");
                     hasil1.kodeAturan = rs.getString("kode_aturan");
                     hasil1.namaAturan = rs.getString("nama_aturan");
-                    // Adjust confidence based on how strongly facts match
-                    hasil1.confidence = adjustConfidence(hasil1.confidence, kondisiJson, fakta, gson);
+                    // Penyesuaian skor confidence berdasarkan seberapa kuat faktanya
+                    hasil1.confidence = adjustConfidence(hasil1.confidence, kondisiJson, fakta, gson, hasil1.kategori);
                     hasil.add(hasil1);
                 }
             }
             rs.getStatement().close();
 
-            // Sort by confidence desc
+            // Urutkan jurusan berdasarkan confidence tertinggi
             hasil.sort((a, b) -> Double.compare(b.confidence, a.confidence));
 
-            // Limit to top 5
-            if (hasil.size() > 5) hasil = hasil.subList(0, 5);
+            // FALLBACK SYSTEM
+            if (hasil.isEmpty()) {
+                String fbSql = "SELECT j.id, j.nama, km.nama as knama FROM jurusan_kuliah j JOIN kategori_minat km ON j.kategori_id = km.id WHERE j.nama LIKE '%Manajemen%' OR j.nama LIKE '%Komunikasi%' OR j.nama LIKE '%Informatika%' LIMIT 3";
+                ResultSet fbRs = DBConnection.executeQuery(fbSql);
+                while(fbRs.next()) {
+                    HasilRekomendasi fb = new HasilRekomendasi();
+                    fb.jurusanId = fbRs.getInt("id");
+                    fb.namaJurusan = fbRs.getString("nama") + " (Saran Adaptif)";
+                    fb.kategori = fbRs.getString("knama");
+                    fb.confidence = 45.0;
+                    fb.prioritas = 1;
+                    fb.kodeAturan = "FB-00";
+                    fb.namaAturan = "Sistem Fallback (Skor Belum Memenuhi Standard)";
+                    hasil.add(fb);
+                }
+                if (fbRs.getStatement() != null) fbRs.getStatement().close();
+            }
 
-            // Enrich with university data
+            // FIX: Batasi rekomendasi maksimal 3 Jurusan (Utama, Alternatif 1, Alternatif 2)
+            if (hasil.size() > 3) hasil = hasil.subList(0, 3);
+
+            // FIX: Loop untuk menarik daftar Universitas di KETIGA jurusan tersebut
             for (HasilRekomendasi h : hasil) {
                 h.universitas = getUniversitasRekomendasi(h.jurusanId, fakta);
+                h.alasanPakar = generateAlasanPakar(h, fakta);
+                h.strategiTembus = generateStrategiTembus(h, fakta);
             }
 
         } catch (Exception e) {
@@ -110,6 +140,86 @@ public class ForwardChaining {
         }
 
         return hasil;
+    }
+
+    // =========================================================================
+    // FITUR BARU: GENERATOR ALASAN LOGIS (MENGAPA COCOK?)
+    // =========================================================================
+    private String generateAlasanPakar(HasilRekomendasi h, Fakta f) {
+        double avgMtkIpa = (f.nilaiMtk + f.nilaiIpa) / 2.0;
+        double avgSosBhs = (f.nilaiIps + f.nilaiBahInd + f.nilaiBahIng) / 3.0;
+        
+        String mapelKuat;
+        double skorDominan;
+
+        if (h.kategori.contains("Sains") || h.kategori.contains("Teknologi") || h.kategori.contains("Kesehatan")) {
+            mapelKuat = "Matematika & Sains";
+            skorDominan = avgMtkIpa;
+        } else if (h.kategori.contains("Sosial") || h.kategori.contains("Bisnis") || h.kategori.contains("Bahasa")) {
+            mapelKuat = "Sosial & Bahasa";
+            skorDominan = avgSosBhs;
+        } else {
+            mapelKuat = "Seni & Kreativitas";
+            skorDominan = f.nilaiSeni > 0 ? f.nilaiSeni : avgSosBhs;
+        }
+
+        String analisis;
+        if (skorDominan >= 85) {
+            analisis = "Hal ini ditopang oleh fondasi akademik Anda yang sangat cemerlang di bidang " + mapelKuat + " (Rata-rata: " + String.format(Locale.US, "%.1f", skorDominan) + ").";
+        } else if (skorDominan >= 75) {
+            analisis = "Hal ini didukung oleh nilai " + mapelKuat + " Anda yang memadai (Rata-rata: " + String.format(Locale.US, "%.1f", skorDominan) + ") sebagai syarat dasar perkuliahan.";
+        } else {
+            analisis = "Namun, Anda perlu meningkatkan intensitas belajar pada mata pelajaran " + mapelKuat + " untuk mengimbangi standar akademik jurusan ini.";
+        }
+
+        // Lintas Jurusan Warning
+        if (f.jurusanSma != null && !f.jurusanSma.isEmpty()) {
+            String sma = f.jurusanSma.toUpperCase();
+            boolean isIpa = sma.contains("IPA") || sma.contains("MIPA");
+            boolean isIps = sma.contains("IPS") || sma.contains("IIS") || sma.contains("SOSIAL");
+
+            if (isIps && (h.kategori.contains("Sains") || h.kategori.contains("Teknologi") || h.kategori.contains("Kesehatan"))) {
+                analisis += " ⚠️ PERINGATAN: Anda dari jurusan IPS yang akan masuk Saintek. Peluang seleksi SNBP/SNBT mungkin jauh lebih sulit. Pastikan usaha ekstra.";
+            } else if (isIpa && (h.kategori.contains("Sosial") || h.kategori.contains("Bisnis") || h.kategori.contains("Bahasa"))) {
+                analisis += " ⚠️ INFO: Anda mengambil lintas jurusan ke Soshum. Bersiaplah menguasai materi Soshum UTBK dengan baik.";
+            }
+        }
+
+        return "Berdasarkan hasil assemen psikologi, profil kognitif Anda menunjukkan kecenderungan minat yang dominan pada rumpun " + h.kategori + ". " + analisis;
+    }
+
+    // =========================================================================
+    // FITUR BARU: GENERATOR STRATEGI SNBP & SNBT
+    // =========================================================================
+    private String generateStrategiTembus(HasilRekomendasi h, Fakta f) {
+        if (h.universitas.isEmpty()) {
+            return "Terus tingkatkan nilai rapor dan persiapan UTBK secara mandiri.";
+        }
+
+        HasilRekomendasi.RekomendasiUniv topUniv = h.universitas.get(0);
+        double estUtbk = ((f.nilaiMtk + f.nilaiIpa + f.nilaiIps + f.nilaiBahInd + f.nilaiBahIng) / 5.0) * 8.5;
+        
+        StringBuilder strat = new StringBuilder();
+        
+        strat.append("Untuk jalur SNBT (UTBK), PTN unggulan di jurusan ini (seperti ").append(topUniv.namaUniv).append(") mematok Passing Grade sekitar ")
+             .append(String.format(Locale.US, "%.0f", topUniv.passingGradeSnbt)).append(". ");
+             
+        if (estUtbk >= topUniv.passingGradeSnbt) {
+            strat.append("Estimasi skor UTBK Anda saat ini (").append(String.format(Locale.US, "%.0f", estUtbk))
+                 .append(") sudah SANGAT AMAN. Pertahankan konsistensi belajar agar tidak turun.");
+        } else {
+            double gap = topUniv.passingGradeSnbt - estUtbk;
+            strat.append("Estimasi skor UTBK Anda (").append(String.format(Locale.US, "%.0f", estUtbk))
+                 .append(") MASIH KURANG ").append(String.format(Locale.US, "%.0f", gap))
+                 .append(" poin. Wajib tambah porsi TryOut UTBK berkala.");
+        }
+
+        if (topUniv.passingGradeSnbp > 0) {
+            strat.append("\nUntuk jalur SNBP (Undangan), target indeks rapor yang dibutuhkan minimal ")
+                 .append(topUniv.passingGradeSnbp).append(". Jaga grafik nilai selalu naik dan kumpulkan sertifikat lomba.");
+        }
+
+        return strat.toString();
     }
 
     private boolean evaluasiKondisi(String json, Fakta f, Gson gson) {
@@ -128,7 +238,7 @@ public class ForwardChaining {
         }
     }
 
-    private double adjustConfidence(double base, String json, Fakta f, Gson gson) {
+    private double adjustConfidence(double base, String json, Fakta f, Gson gson, String kategoriJurusan) {
         try {
             JsonObject cond = gson.fromJson(json, JsonObject.class);
             double bonus = 0;
@@ -137,12 +247,26 @@ public class ForwardChaining {
                 JsonObject range = entry.getValue().getAsJsonObject();
                 double actual = getFaktaValue(key, f);
                 double min = range.has("min") ? range.get("min").getAsDouble() : 0;
-                // Extra confidence for exceeding minimum by a lot
+                // Ekstra confidence jika nilai melampaui batas minimum secara signifikan
                 if (actual > min) {
                     bonus += Math.min(2.0, (actual - min) * 0.3);
                 }
             }
-            return Math.min(99.0, base + bonus);
+            
+            // Penalty lintas jurusan
+            if (f.jurusanSma != null && !f.jurusanSma.isEmpty() && kategoriJurusan != null) {
+                String sma = f.jurusanSma.toUpperCase();
+                boolean isIpa = sma.contains("IPA") || sma.contains("MIPA");
+                boolean isIps = sma.contains("IPS") || sma.contains("IIS") || sma.contains("SOSIAL");
+
+                if (isIps && (kategoriJurusan.contains("Sains") || kategoriJurusan.contains("Teknologi") || kategoriJurusan.contains("Kesehatan"))) {
+                    bonus -= 30.0; // Penalty besar untuk anak IPS masuk Saintek/Medis
+                } else if (isIpa && (kategoriJurusan.contains("Sosial") || kategoriJurusan.contains("Bisnis") || kategoriJurusan.contains("Bahasa"))) {
+                    bonus -= 10.0; // Penalty ringan untuk anak IPA lintas jurusan
+                }
+            }
+            
+            return Math.max(0.1, Math.min(99.0, base + bonus));
         } catch (Exception e) {
             return base;
         }
@@ -167,49 +291,94 @@ public class ForwardChaining {
         }
     }
 
+    // ── FIX LOGIKA PENCARIAN KAMPUS (DINAMIS SESUAI NILAI SISWA) ──
     private List<HasilRekomendasi.RekomendasiUniv> getUniversitasRekomendasi(int jurusanId, Fakta fakta) {
         List<HasilRekomendasi.RekomendasiUniv> list = new ArrayList<>();
         try {
-            String sql = "SELECT uj.id, u.nama, u.kota, u.wilayah, u.akreditasi, " +
-                         "uj.peluang_masuk, uj.akreditasi_prodi, uj.passing_grade_snbt " +
+            // Mengambil SEMUA Kampus untuk jurusan ini
+            String sql = "SELECT uj.id, u.nama, u.kota, u.provinsi, u.wilayah, u.akreditasi, " +
+                         "uj.peluang_masuk, uj.akreditasi_prodi, uj.passing_grade_snbt, uj.passing_grade_snbp, uj.biaya_kuliah " +
                          "FROM universitas_jurusan uj " +
                          "JOIN universitas u ON uj.universitas_id = u.id " +
-                         "WHERE uj.jurusan_id = ? ORDER BY uj.peluang_masuk DESC";
+                         "WHERE uj.jurusan_id = ?";
+            
             ResultSet rs = DBConnection.executeQuery(sql, jurusanId);
             while (rs.next()) {
                 HasilRekomendasi.RekomendasiUniv ru = new HasilRekomendasi.RekomendasiUniv();
                 ru.univJurusanId   = rs.getInt("id");
                 ru.namaUniv        = rs.getString("nama");
                 ru.kota            = rs.getString("kota");
+                ru.provinsi        = rs.getString("provinsi");
                 ru.wilayah         = rs.getString("wilayah");
                 ru.peluangMasuk    = rs.getDouble("peluang_masuk");
                 ru.akreditasiProdi = rs.getString("akreditasi_prodi");
                 ru.akreditasiUniv  = rs.getString("akreditasi");
-                // Peluang personal disesuaikan nilai siswa vs passing grade
-                ru.peluangPersonal = hitungPeluangPersonal(ru.peluangMasuk,
-                    rs.getDouble("passing_grade_snbt"), fakta);
+                ru.passingGradeSnbt = rs.getDouble("passing_grade_snbt");
+                ru.passingGradeSnbp = rs.getDouble("passing_grade_snbp");
+                ru.biayaKuliah     = rs.getLong("biaya_kuliah");
+                
+                // Peluang dihitung matematis murni sesuai dengan rapor asli
+                ru.peluangPersonal = hitungPeluangPersonal(ru.peluangMasuk, ru.passingGradeSnbt, fakta);
                 list.add(ru);
             }
-            rs.getStatement().close();
+            if(rs.getStatement() != null) rs.getStatement().close();
+            
+            // --- PIRAMIDA REKOMENDASI (SAFE vs ASPIRATIONAL) ---
+            list.sort((a, b) -> Double.compare(b.peluangPersonal, a.peluangPersonal));
+            
+            List<HasilRekomendasi.RekomendasiUniv> finalList = new ArrayList<>();
+            for (int k = 0; k < Math.min(3, list.size()); k++) {
+                finalList.add(list.get(k));
+            }
+            
+            List<HasilRekomendasi.RekomendasiUniv> remaining = new ArrayList<>(list);
+            remaining.removeAll(finalList);
+            remaining.removeIf(u -> u.peluangPersonal < 40.0);
+            remaining.sort((a, b) -> Double.compare(b.passingGradeSnbt, a.passingGradeSnbt));
+            
+            for (int k = 0; k < Math.min(2, remaining.size()); k++) {
+                finalList.add(remaining.get(k));
+            }
+            
+            if (finalList.size() < 5) {
+                List<HasilRekomendasi.RekomendasiUniv> safetyFill = new ArrayList<>(list);
+                safetyFill.removeAll(finalList);
+                for (int k = 0; k < safetyFill.size() && finalList.size() < 5; k++) {
+                    finalList.add(safetyFill.get(k));
+                }
+            }
+            
+            list = finalList;
+            
+            // Batasi 5 hasil PTN yang paling relevan dengan kapasitas siswa
+            if (list.size() > 5) {
+                list = list.subList(0, 5);
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
         return list;
     }
 
+    // ── ALGORITMA ESTIMASI PELUANG MATEMATIS (TANPA RANDOM) ──
     private double hitungPeluangPersonal(double peluangBase, double passingGrade, Fakta f) {
-        // Estimasi rata-rata nilai siswa (konversi ke skala 1000)
         double nilaiRata = (f.nilaiMtk + f.nilaiIpa + f.nilaiIps + f.nilaiBahInd + f.nilaiBahIng) / 5.0;
-        double nilaiEstimasi = nilaiRata * 7.5; // rough conversion to UTBK scale
+        double nilaiEstimasi = nilaiRata * 8.5; 
 
         if (passingGrade == 0 || nilaiEstimasi == 0) return peluangBase;
 
-        double ratio = nilaiEstimasi / passingGrade;
-        if (ratio >= 1.05)       return Math.min(peluangBase * 1.5, 45.0);
-        else if (ratio >= 1.0)   return Math.min(peluangBase * 1.2, 35.0);
-        else if (ratio >= 0.95)  return peluangBase * 0.9;
-        else if (ratio >= 0.90)  return peluangBase * 0.6;
-        else                     return peluangBase * 0.3;
+        double selisih = nilaiEstimasi - passingGrade;
+
+        if (selisih >= 20) {
+            return Math.min(95.0, 80.0 + (selisih * 0.15)); 
+        } else if (selisih >= 0) {
+            return Math.min(79.9, 60.0 + (selisih * 0.5));
+        } else if (selisih >= -30) {
+            return Math.max(35.0, 60.0 + selisih);
+        } else {
+            return Math.max(2.0, 35.0 + (selisih * 0.3));
+        }
     }
 
     /**
@@ -248,9 +417,9 @@ public class ForwardChaining {
         return fakta;
     }
 
-    /**
-     * Generate tips belajar berdasarkan jurusan rekomendasi
-     */
+    // =========================================================================
+    // FITUR LAMA: TETAP ADA 100% SESUAI REQUEST LU (TIDAK DIHAPUS)
+    // =========================================================================
     public static String generateTipsBelajar(HasilRekomendasi rekomendasi) {
         StringBuilder tips = new StringBuilder();
         String jurusan = rekomendasi.namaJurusan;
@@ -324,9 +493,6 @@ public class ForwardChaining {
         return tips.toString();
     }
 
-    /**
-     * Generate kegiatan rekomendasi
-     */
     public static String generateRekomendasiKegiatan(HasilRekomendasi rekomendasi) {
         String jurusan = rekomendasi.namaJurusan;
         StringBuilder sb = new StringBuilder("🎯 Rekomendasi Kegiatan:\n");

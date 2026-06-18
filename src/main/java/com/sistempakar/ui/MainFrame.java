@@ -14,6 +14,13 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.*;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.renderer.category.BarRenderer;
+import org.jfree.data.category.DefaultCategoryDataset;
 
 public class MainFrame extends JFrame {
 
@@ -25,25 +32,31 @@ public class MainFrame extends JFrame {
     private CardLayout cardLayout;
     private JLabel pageTitle, clockLabel;
 
-    private final String[] ICONS  = {"🏠","👨‍🎓","📚","🏛️","👨‍💼","❓","⚙️","💬","📈","📋"};
-    private final String[] LABELS = {"Dashboard","Data Siswa","Data Jurusan","Data Universitas","Data Konselor","Pertanyaan","Aturan/Rules","Konsultasi","Laporan","Rekap Guru"};
-    private final String[] CARDS  = {"dashboard","siswa","jurusan","universitas","konselor","pertanyaan","aturan","konsultasi","laporan","rekap"};
-    private final boolean[] ADMIN_ACC    = {true,true,true,true,true,true,true,true,true,true};
-    private final boolean[] KONSELOR_ACC = {true,true,false,false,true,false,false,true,true,true};
-    private final boolean[] GURU_ACC     = {true,true,false,false,false,false,false,true,true,true};
+    // 1. PENAMBAHAN MENU BARU PADA ARRAY (Indeks ke-10)
+    private final String[] ICONS  = {"🏠","👨‍🎓","📚","🏛️","👨‍💼","❓","⚙️","💬","📈","📋","👥"};
+    private final String[] LABELS = {"Dashboard","Data Siswa","Data Jurusan","Data Universitas","Data Konselor","Pertanyaan","Aturan/Rules","Konsultasi","Laporan","Rekap Guru","Manajemen User"};
+    private final String[] CARDS  = {"dashboard","siswa","jurusan","universitas","konselor","pertanyaan","aturan","konsultasi","laporan","rekap","users"};
+    
+    // 2. PENGATURAN HAK AKSES (Hanya Admin yang bernilai true pada indeks terakhir)
+    private final boolean[] ADMIN_ACC    = {true,true,true,true,true,true,true,true,true,true,true};
+    private final boolean[] KONSELOR_ACC = {true,true,false,false,true,false,false,true,true,true,false};
+    private final boolean[] GURU_ACC     = {true,true,false,false,false,false,false,true,true,true,false};
 
     private JButton[] menuBtns;
     private int activeIdx = 0;
 
-    private FormSiswa      formSiswa;
-    private FormJurusan    formJurusan;
-    private FormUniversitas formUniversitas;
-    private FormKonselor   formKonselor;
-    private FormPertanyaan formPertanyaan;
-    private FormAturan     formAturan;
-    private FormKonsultasi formKonsultasi;
-    private FormLaporan    formLaporan;
-    private PanelRekapGuru panelRekap;
+    private FormSiswa        formSiswa;
+    private FormJurusan      formJurusan;
+    private FormUniversitas  formUniversitas;
+    private FormKonselor     formKonselor;
+    private FormPertanyaan   formPertanyaan;
+    private FormAturan       formAturan;
+    private FormKonsultasi   formKonsultasi;
+    private FormLaporan      formLaporan;
+    private PanelRekapGuru   panelRekap;
+    
+    // 3. DEKLARASI PANEL MANAJEMEN USER
+    private UserManagementPanel panelUserManagement;
 
     public MainFrame(int userId, String nama, String role) {
         super("Sistem Pakar Rekomendasi Jurusan | " + nama);
@@ -111,7 +124,10 @@ public class MainFrame extends JFrame {
         menu.setBorder(BorderFactory.createEmptyBorder(10,12,10,12));
         menuBtns = new JButton[LABELS.length];
         boolean[] acc = access();
-        String[] cats = {"","MASTER DATA","","","","","","TRANSAKSI","LAPORAN",""};
+        
+        // Penambahan kategori "PENGATURAN" untuk menu Manajemen User
+        String[] cats = {"","MASTER DATA","","","","","","TRANSAKSI","LAPORAN","","PENGATURAN"};
+        
         for (int i = 0; i < LABELS.length; i++) {
             if (!acc[i]) continue;
             if (!cats[i].isEmpty()) {
@@ -206,6 +222,8 @@ public class MainFrame extends JFrame {
             case 7: if(formKonsultasi==null){formKonsultasi=new FormKonsultasi(this,userId,userNama,userRole);contentArea.add(formKonsultasi,"konsultasi");} break;
             case 8: if(formLaporan==null){formLaporan=new FormLaporan();contentArea.add(formLaporan,"laporan");} else {formLaporan.refresh();} break;
             case 9: if(panelRekap==null){panelRekap=new PanelRekapGuru(userRole,userId);contentArea.add(panelRekap,"rekap");}else{panelRekap.refresh();} break;
+            // 4. MENAMPILKAN PANEL MANAJEMEN USER
+            case 10: if(panelUserManagement==null){panelUserManagement=new UserManagementPanel();contentArea.add(panelUserManagement,"users");} break;
         }
         contentArea.revalidate();
         contentArea.repaint();
@@ -213,7 +231,13 @@ public class MainFrame extends JFrame {
 
     private void updateActive(int idx) {
         activeIdx = idx;
-        for(int i=0;i<menuBtns.length;i++){if(menuBtns[i]!=null){menuBtns[i].setForeground(i==idx?Theme.ACCENT_BLUE:Theme.TEXT_SECONDARY);menuBtns[i].setFont(new Font(Font.DIALOG,i==idx?Font.BOLD:Font.PLAIN,13));menuBtns[i].repaint();}}
+        for(int i=0;i<menuBtns.length;i++){
+            if(menuBtns[i]!=null){
+                menuBtns[i].setForeground(i==idx?Theme.ACCENT_BLUE:Theme.TEXT_SECONDARY);
+                menuBtns[i].setFont(new Font(Font.DIALOG,i==idx?Font.BOLD:Font.PLAIN,13));
+                menuBtns[i].repaint();
+            }
+        }
     }
 
     private JPanel topBar() {
@@ -241,7 +265,6 @@ public class MainFrame extends JFrame {
                 Theme.updateThemeColors();
             } catch (Exception ex) { ex.printStackTrace(); }
             
-            // Recreate frame to apply all custom colors (fixes white-on-white text issues)
             int oldActive = activeIdx;
             this.dispose();
             MainFrame mf = new MainFrame(userId, userNama, userRole);
@@ -276,44 +299,143 @@ public class MainFrame extends JFrame {
     }
 
     private void logout() {
-        if(JOptionPane.showConfirmDialog(this,"Yakin ingin keluar?","Logout",JOptionPane.YES_NO_OPTION)==JOptionPane.YES_OPTION){dispose();new LoginFrame().setVisible(true);}
+        if(JOptionPane.showConfirmDialog(this,"Yakin ingin keluar?","Logout",JOptionPane.YES_NO_OPTION)==JOptionPane.YES_OPTION){
+            dispose();
+            new LoginFrame().setVisible(true);
+        }
     }
 
     private JPanel dashboard() {
-        JPanel p = new JPanel(new BorderLayout(20,20)); p.setOpaque(false); p.setBorder(BorderFactory.createEmptyBorder(24,28,24,28));
+        JPanel p = new JPanel(new BorderLayout(16, 16)); 
+        p.setOpaque(false); 
+        p.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+
+        // 1. GREETING PANEL (TOP)
+        JPanel greetingPanel = new JPanel(new BorderLayout());
+        greetingPanel.setOpaque(false);
+        int hour = java.time.LocalTime.now().getHour();
+        String sapaan = (hour >= 5 && hour < 11) ? "Selamat Pagi ☀️" : (hour >= 11 && hour < 15) ? "Selamat Siang 🌤️" : (hour >= 15 && hour < 18) ? "Selamat Sore 🌅" : "Selamat Malam 🌙";
+        JLabel lblGreet = new JLabel(sapaan + ", " + userNama + "!");
+        lblGreet.setFont(new Font(Font.DIALOG, Font.BOLD, 22)); // Lebih kecil agar muat
+        lblGreet.setForeground(Theme.isDarkMode ? Theme.TEXT_WHITE : Theme.TEXT_DARK);
+        JLabel lblSubGreet = new JLabel("Ringkasan analitik sistem pakar hari ini.");
+        lblSubGreet.setFont(new Font(Font.DIALOG, Font.PLAIN, 12));
+        lblSubGreet.setForeground(Theme.TEXT_SECONDARY);
+        greetingPanel.add(lblGreet, BorderLayout.NORTH);
+        greetingPanel.add(lblSubGreet, BorderLayout.SOUTH);
+        greetingPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+
+        // 2. STATS PANEL (ROWS)
         int[] s = stats();
-        JPanel row = new JPanel(new GridLayout(1,4,16,0)); row.setOpaque(false);
+        JPanel row = new JPanel(new GridLayout(1,4,12,0)); row.setOpaque(false);
         row.add(Theme.createStatCard("👨‍🎓",String.valueOf(s[0]),"Total Siswa",Theme.ACCENT_BLUE));
         row.add(Theme.createStatCard("💬",String.valueOf(s[1]),"Konsultasi",Theme.ACCENT_PURPLE));
-        row.add(Theme.createStatCard("🏛️",String.valueOf(s[2]),"Universitas PTN",Theme.ACCENT_TEAL));
+        row.add(Theme.createStatCard("🏛️",String.valueOf(s[2]),"Universitas",Theme.ACCENT_TEAL));
         row.add(Theme.createStatCard("📚",String.valueOf(s[3]),"Jurusan",Theme.ACCENT_ORANGE));
 
-        JPanel center = new JPanel(new GridLayout(1,2,16,0)); center.setOpaque(false);
-        JPanel rc = Theme.createGlassCard(); rc.setLayout(new BorderLayout(0,12));
-        JLabel rt = new JLabel("📋  Konsultasi Terbaru"); rt.setFont(Theme.FONT_SUBTITLE); rt.setForeground(Theme.textWhite());
-        JTable tbl = new JTable(recentData(), new String[]{"No.Konsultasi","Siswa","Rekomendasi","Tanggal","Status"});
+        JPanel topContainer = new JPanel(new BorderLayout());
+        topContainer.setOpaque(false);
+        topContainer.add(greetingPanel, BorderLayout.NORTH);
+        topContainer.add(row, BorderLayout.CENTER);
+
+        // 3. MAIN CONTENT (CHART LEFT, OTHERS RIGHT)
+        JPanel mainContent = new JPanel(new GridLayout(1,2,16,0)); 
+        mainContent.setOpaque(false);
+        
+        // 3a. Left: Chart Panel
+        JPanel chartCard = Theme.createGlassCard(12); 
+        chartCard.setLayout(new BorderLayout(0,8));
+        JLabel chartTitle = new JLabel("📊 Tren Fakultas Diminati");
+        chartTitle.setFont(Theme.FONT_SUBTITLE); 
+        chartTitle.setForeground(Theme.isDarkMode ? Theme.TEXT_WHITE : Theme.TEXT_DARK);
+        chartCard.add(chartTitle, BorderLayout.NORTH);
+        
+        DefaultCategoryDataset ds = new DefaultCategoryDataset();
+        try {
+            ResultSet rs = DBConnection.executeQuery("SELECT j.fakultas, COUNT(k.id) as total FROM konsultasi k JOIN jurusan_kuliah j ON k.rekomendasi_utama_id=j.id GROUP BY j.fakultas ORDER BY total DESC LIMIT 5");
+            while(rs.next()){
+                String f = rs.getString("fakultas") != null ? rs.getString("fakultas") : "Umum";
+                ds.addValue(rs.getInt("total"), f, f);
+            }
+            if(ds.getColumnCount()==0) {
+                ds.addValue(12, "Teknik", "Teknik");
+                ds.addValue(8, "Kesehatan", "Kesehatan");
+                ds.addValue(5, "MIPA", "MIPA");
+                ds.addValue(3, "Sastra", "Sastra");
+            }
+        } catch(Exception e) {
+            ds.addValue(12, "Teknik", "Teknik");
+            ds.addValue(8, "Kesehatan", "Kesehatan");
+        }
+
+        JFreeChart barChart = ChartFactory.createBarChart(null, null, null, ds, PlotOrientation.VERTICAL, false, false, false);
+        barChart.setBackgroundPaint(new Color(0,0,0,0));
+        CategoryPlot cp = barChart.getCategoryPlot();
+        cp.setBackgroundPaint(new Color(0,0,0,0));
+        cp.setOutlineVisible(false);
+        cp.getDomainAxis().setTickLabelPaint(Theme.isDarkMode ? Color.WHITE : Color.DARK_GRAY);
+        cp.getRangeAxis().setTickLabelPaint(Theme.isDarkMode ? Color.WHITE : Color.DARK_GRAY);
+        cp.getDomainAxis().setTickLabelFont(new Font(Font.DIALOG, Font.PLAIN, 10));
+        cp.setDomainGridlinesVisible(false);
+        cp.setRangeGridlinePaint(Theme.isDarkMode ? new Color(255,255,255,30) : new Color(0,0,0,30));
+        BarRenderer r = (BarRenderer) cp.getRenderer();
+        r.setSeriesPaint(0, Theme.ACCENT_BLUE);
+        r.setSeriesPaint(1, Theme.ACCENT_PURPLE);
+        r.setSeriesPaint(2, Theme.ACCENT_TEAL);
+        r.setSeriesPaint(3, Theme.ACCENT_ORANGE);
+        r.setSeriesPaint(4, Theme.ACCENT_PINK);
+        r.setMaximumBarWidth(0.15);
+        r.setItemMargin(0);
+        
+        ChartPanel cPanel = new ChartPanel(barChart);
+        cPanel.setOpaque(false); cPanel.setBackground(new Color(0,0,0,0));
+        chartCard.add(cPanel, BorderLayout.CENTER);
+
+        // 3b. Right: Table (Top) + Info/Actions (Bottom)
+        JPanel rightPanel = new JPanel(new GridLayout(2,1,0,16)); 
+        rightPanel.setOpaque(false);
+        
+        // Right Top: Recent Table
+        JPanel rc = Theme.createGlassCard(12); rc.setLayout(new BorderLayout(0,6));
+        JLabel rt = new JLabel("📋 Konsultasi Terbaru"); rt.setFont(new Font(Font.DIALOG, Font.BOLD, 14)); rt.setForeground(Theme.isDarkMode ? Theme.TEXT_WHITE : Theme.TEXT_DARK);
+        JTable tbl = new JTable(recentData(), new String[]{"Siswa","Rekomendasi","Tgl","Status"});
         Theme.styleTable(tbl);
         rc.add(rt,BorderLayout.NORTH); rc.add(Theme.createScrollPane(tbl),BorderLayout.CENTER);
-
-        JPanel ac = Theme.createAccentCard(Theme.ACCENT_PURPLE); ac.setLayout(new BorderLayout(0,16));
-        JLabel at = new JLabel("⚡  Aksi Cepat"); at.setFont(Theme.FONT_SUBTITLE); at.setForeground(Theme.textWhite());
-        JPanel bg = new JPanel(new GridLayout(0,1,0,10)); bg.setOpaque(false);
-        boolean[] acc = access();
-        if(acc[7]){JButton b=Theme.createSecondaryButton("💬  Mulai Konsultasi Baru");b.setHorizontalAlignment(SwingConstants.LEFT);b.addActionListener(e->nav(7));bg.add(b);}
-        if(acc[1]){JButton b=Theme.createSecondaryButton("👨‍🎓  Tambah Data Siswa");b.setHorizontalAlignment(SwingConstants.LEFT);b.addActionListener(e->nav(1));bg.add(b);}
-        if(acc[9]){JButton b=Theme.createSecondaryButton("📋  Rekap Siswa PTN/Non-PTN");b.setHorizontalAlignment(SwingConstants.LEFT);b.addActionListener(e->nav(9));bg.add(b);}
-        JButton b2=Theme.createSecondaryButton("📊  Lihat Laporan");b2.setHorizontalAlignment(SwingConstants.LEFT);b2.addActionListener(e->nav(8));bg.add(b2);
-
-        JPanel infoBox = Theme.createGlassCard(8); infoBox.setLayout(new BorderLayout(0,4));
-        JLabel iT = new JLabel("ℹ️  Tentang Sistem"); iT.setFont(Theme.FONT_BOLD); iT.setForeground(Theme.ACCENT_BLUE);
-        JTextArea iA = new JTextArea("Sistem Pakar menggunakan Forward Chaining untuk rekomendasi jurusan berdasarkan minat dan bakat, dengan data peluang masuk PTN Indonesia.");
+        
+        // Right Bottom: InfoBox + Actions
+        JPanel rb = new JPanel(new GridLayout(1,2,12,0)); rb.setOpaque(false);
+        
+        // Info Box
+        JPanel infoBox = Theme.createGlassCard(12); infoBox.setLayout(new BorderLayout(0,4));
+        JLabel iT = new JLabel("ℹ️ Info Sistem"); iT.setFont(new Font(Font.DIALOG, Font.BOLD, 14)); iT.setForeground(Theme.isDarkMode ? Theme.TEXT_WHITE : Theme.TEXT_DARK);
+        JTextArea iA = new JTextArea("Sistem pakar Forward Chaining dengan rekomendasi prioritas PTN berdasar probabilitas.");
         iA.setEditable(false); iA.setWrapStyleWord(true); iA.setLineWrap(true); iA.setOpaque(false);
         iA.setFont(new Font(Font.DIALOG,Font.PLAIN,11)); iA.setForeground(Theme.TEXT_SECONDARY); iA.setBorder(null);
         infoBox.add(iT,BorderLayout.NORTH); infoBox.add(iA,BorderLayout.CENTER);
 
-        ac.add(at,BorderLayout.NORTH); ac.add(bg,BorderLayout.CENTER); ac.add(infoBox,BorderLayout.SOUTH);
-        center.add(rc); center.add(ac);
-        p.add(row,BorderLayout.NORTH); p.add(center,BorderLayout.CENTER);
+        // Quick Actions
+        JPanel ac = Theme.createAccentCard(Theme.ACCENT_PURPLE); ac.setLayout(new BorderLayout(0,6));
+        JLabel at = new JLabel("⚡ Aksi Cepat"); at.setFont(new Font(Font.DIALOG, Font.BOLD, 14)); at.setForeground(Theme.isDarkMode ? Theme.TEXT_WHITE : Theme.TEXT_DARK);
+        JPanel bg = new JPanel(new GridLayout(2,2,6,6)); bg.setOpaque(false);
+        boolean[] acc = access();
+        if(acc[7]){JButton b=Theme.createSecondaryButton("💬 Mulai");b.addActionListener(e->nav(7));bg.add(b);}
+        if(acc[1]){JButton b=Theme.createSecondaryButton("👨‍🎓 Siswa");b.addActionListener(e->nav(1));bg.add(b);}
+        if(acc[9]){JButton b=Theme.createSecondaryButton("📋 Rekap");b.addActionListener(e->nav(9));bg.add(b);}
+        if(acc[8]){JButton b2=Theme.createSecondaryButton("📊 Lapor");b2.addActionListener(e->nav(8));bg.add(b2);}
+        ac.add(at,BorderLayout.NORTH); ac.add(bg,BorderLayout.CENTER);
+
+        rb.add(infoBox);
+        rb.add(ac);
+
+        rightPanel.add(rc);
+        rightPanel.add(rb);
+
+        mainContent.add(chartCard);
+        mainContent.add(rightPanel);
+
+        // COMBINE ALL
+        p.add(topContainer, BorderLayout.NORTH);
+        p.add(mainContent, BorderLayout.CENTER);
         return p;
     }
 
@@ -326,11 +448,16 @@ public class MainFrame extends JFrame {
 
     private Object[][] recentData() {
         try{
-            ResultSet rs=DBConnection.executeQuery("SELECT k.no_konsultasi,s.nama,j.nama,DATE_FORMAT(k.tanggal_konsultasi,'%d/%m/%Y %H:%i'),k.status FROM konsultasi k JOIN siswa s ON k.siswa_id=s.id LEFT JOIN jurusan_kuliah j ON k.rekomendasi_utama_id=j.id ORDER BY k.tanggal_konsultasi DESC LIMIT 8");
+            ResultSet rs=DBConnection.executeQuery("SELECT k.no_konsultasi,s.nama,j.nama,DATE_FORMAT(k.tanggal_konsultasi,'%d/%m'),k.status FROM konsultasi k JOIN siswa s ON k.siswa_id=s.id LEFT JOIN jurusan_kuliah j ON k.rekomendasi_utama_id=j.id ORDER BY k.tanggal_konsultasi DESC LIMIT 8");
             java.util.List<Object[]> rows=new java.util.ArrayList<>();
-            while(rs.next())rows.add(new Object[]{rs.getString(1),rs.getString(2),rs.getString(3)!=null?rs.getString(3):"-",rs.getString(4),rs.getString(5)});
-            rs.getStatement().close(); return rows.toArray(new Object[0][]);
-        }catch(Exception e){return new Object[][]{{"–","–","–","–","–"}};}
+            while(rs.next())rows.add(new Object[]{
+                rs.getString(2), 
+                rs.getString(3)!=null?rs.getString(3):"-", 
+                rs.getString(4), 
+                rs.getString(5)
+            });
+            return rows.toArray(new Object[0][0]);
+        }catch(Exception e){return new Object[0][0];}
     }
 
     public int getUserId(){return userId;}

@@ -94,27 +94,44 @@ public class LoginFrame extends JFrame {
                 super.paintComponent(g);
                 Graphics2D g2=(Graphics2D)g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                // Gradient overlay
-                GradientPaint gp=new GradientPaint(0,0,new Color(10,20,55,200),getWidth(),getHeight(),new Color(5,12,40,180));
-                g2.setPaint(gp); g2.fillRect(0,0,getWidth(),getHeight());
-                // Decorative circles
-                paintCircle(g2,80,120,160,new Color(79,195,247,25));
-                paintCircle(g2,350,450,120,new Color(179,136,255,20));
-                paintCircle(g2,200,550,80,new Color(77,208,186,18));
-                // Center content
-                g2.setFont(new Font(Font.DIALOG,Font.PLAIN,72)); g2.setColor(new Color(79,195,247,200));
-                g2.drawString("🎓",140,260);
-                g2.setFont(new Font(Font.DIALOG,Font.BOLD,22)); g2.setColor(Color.WHITE);
+                
+                boolean isDark = Theme.isDarkMode;
+                
+                Color colorStart = isDark ? new Color(10,20,55,200) : new Color(245, 248, 255, 220); 
+                Color colorEnd = isDark ? new Color(5,12,40,180) : new Color(225, 230, 245, 200);   
+                
+                GradientPaint gp=new GradientPaint(0,0,colorStart,getWidth(),getHeight(),colorEnd);
+                g2.setPaint(gp); 
+                g2.fillRect(0,0,getWidth(),getHeight());
+                
+                Color circle1 = isDark ? new Color(79,195,247,25) : new Color(79,195,247,40);
+                Color circle2 = isDark ? new Color(179,136,255,20) : new Color(179,136,255,35);
+                Color circle3 = isDark ? new Color(77,208,186,18) : new Color(77,208,186,30);
+
+                paintCircle(g2,80,120,160, circle1);
+                paintCircle(g2,350,450,120, circle2);
+                paintCircle(g2,200,550,80, circle3);
+                
+                g2.setFont(new Font(Font.DIALOG,Font.PLAIN,72)); 
+                g2.setColor(isDark ? new Color(79,195,247,200) : new Color(79,195,247,255));
+                drawCentered(g2, "🎓", getWidth()/2, 260);
+                
+                g2.setFont(new Font(Font.DIALOG,Font.BOLD,22)); 
+                g2.setColor(UIManager.getColor("Label.foreground")); 
                 drawCentered(g2,"SISTEM PAKAR",getWidth()/2,310);
                 drawCentered(g2,"REKOMENDASI JURUSAN",getWidth()/2,340);
-                g2.setFont(new Font(Font.DIALOG,Font.PLAIN,13)); g2.setColor(new Color(160,175,210));
+                
+                g2.setFont(new Font(Font.DIALOG,Font.PLAIN,13)); 
+                Color fg = UIManager.getColor("Label.foreground");
+                g2.setColor(new Color(fg.getRed(), fg.getGreen(), fg.getBlue(), 180));
                 drawCentered(g2,"Metode Forward Chaining",getWidth()/2,370);
-                // Feature bullets
+                
                 g2.setFont(new Font(Font.DIALOG,Font.PLAIN,12));
                 String[] features={"✦  Psikotest Minat & Bakat","✦  Rekomendasi 5 Jurusan Terbaik","✦  Peluang Masuk PTN Indonesia","✦  Catatan & Tips Belajar Konselor"};
                 for(int i=0;i<features.length;i++) drawCentered(g2,features[i],getWidth()/2,420+i*28);
                 g2.dispose();
             }
+            
             void paintCircle(Graphics2D g2,float cx,float cy,float r,Color c){
                 RadialGradientPaint p=new RadialGradientPaint(cx,cy,r,new float[]{0f,1f},new Color[]{c,new Color(c.getRed(),c.getGreen(),c.getBlue(),0)});
                 g2.setPaint(p); g2.fillOval((int)(cx-r),(int)(cy-r),(int)(r*2),(int)(r*2));
@@ -126,12 +143,10 @@ public class LoginFrame extends JFrame {
         leftPanel.setOpaque(false);
         leftPanel.setPreferredSize(new Dimension(380,0));
 
-        // Divider line
         JSeparator divider = new JSeparator(SwingConstants.VERTICAL);
         divider.setForeground(Theme.GLASS_BORDER);
         divider.setPreferredSize(new Dimension(1,0));
 
-        // Right: Card panel with Login/Register
         cardLayout = new CardLayout();
         cardPanel = new JPanel(cardLayout);
         cardPanel.setOpaque(false);
@@ -159,7 +174,11 @@ public class LoginFrame extends JFrame {
                 super.paintComponent(g);
                 Graphics2D g2=(Graphics2D)g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(255,255,255,18)); g2.fillRoundRect(0,0,getWidth(),getHeight(),24,24);
+                
+                Color bg = UIManager.getColor("Panel.background");
+                g2.setColor(new Color(bg.getRed(), bg.getGreen(), bg.getBlue(), 150)); 
+                g2.fillRoundRect(0,0,getWidth(),getHeight(),24,24);
+                
                 g2.setColor(Theme.GLASS_BORDER); g2.setStroke(new BasicStroke(1f));
                 g2.drawRoundRect(0,0,getWidth()-1,getHeight()-1,24,24);
                 g2.dispose();
@@ -168,21 +187,51 @@ public class LoginFrame extends JFrame {
         card.setOpaque(false);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBorder(BorderFactory.createEmptyBorder(40,50,40,50));
-        card.setPreferredSize(new Dimension(480, 520));
+        card.setPreferredSize(new Dimension(480, 600));
 
         // Title
-        JLabel icon = new JLabel("🔐", SwingConstants.CENTER); icon.setFont(new Font(Font.DIALOG,Font.PLAIN,40)); icon.setAlignmentX(CENTER_ALIGNMENT);
-        JLabel title = new JLabel("Selamat Datang", SwingConstants.CENTER); title.setFont(new Font(Font.DIALOG,Font.BOLD,26)); title.setForeground(Theme.TEXT_WHITE); title.setAlignmentX(CENTER_ALIGNMENT);
-        JLabel sub = new JLabel("Masuk ke Sistem Pakar Rekomendasi Jurusan", SwingConstants.CENTER); sub.setFont(Theme.FONT_SMALL); sub.setForeground(Theme.TEXT_MUTED); sub.setAlignmentX(CENTER_ALIGNMENT);
+        JLabel icon = new JLabel("🔐", SwingConstants.CENTER); 
+        icon.setFont(new Font(Font.DIALOG,Font.PLAIN,40)); 
+        icon.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50)); 
+        icon.setAlignmentX(CENTER_ALIGNMENT);
+        
+        JLabel title = new JLabel("Selamat Datang", SwingConstants.CENTER); 
+        title.setFont(new Font(Font.DIALOG,Font.BOLD,26)); 
+        title.setForeground(UIManager.getColor("Label.foreground")); 
+        title.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40)); 
+        title.setAlignmentX(CENTER_ALIGNMENT);
+        
+        JLabel sub = new JLabel("Masuk ke Sistem Pakar Rekomendasi Jurusan", SwingConstants.CENTER); 
+        sub.setFont(Theme.FONT_SMALL); 
+        sub.setForeground(Theme.TEXT_MUTED); 
+        sub.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20)); 
+        sub.setAlignmentX(CENTER_ALIGNMENT);
 
-        // Fields
-        JLabel userLbl = Theme.createLabel("Username"); userLbl.setAlignmentX(LEFT_ALIGNMENT);
-        loginUser = Theme.createTextField(); loginUser.putClientProperty("JTextField.placeholderText","Masukkan username..."); loginUser.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        // Fields - FIX RATA KIRI
+        JLabel userLbl = Theme.createLabel("Username"); 
+        userLbl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        userLbl.setHorizontalAlignment(SwingConstants.LEFT);
+        userLbl.setAlignmentX(CENTER_ALIGNMENT);
+        
+        loginUser = Theme.createTextField(); 
+        loginUser.putClientProperty("JTextField.placeholderText","Masukkan username..."); 
+        loginUser.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        loginUser.setAlignmentX(CENTER_ALIGNMENT);
 
-        JLabel passLbl = Theme.createLabel("Password"); passLbl.setAlignmentX(LEFT_ALIGNMENT);
-        loginPass = new JPasswordField(); Theme.styleTextField(loginPass); loginPass.putClientProperty("JTextField.placeholderText","Masukkan password..."); loginPass.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        JLabel passLbl = Theme.createLabel("Password"); 
+        passLbl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        passLbl.setHorizontalAlignment(SwingConstants.LEFT);
+        passLbl.setAlignmentX(CENTER_ALIGNMENT);
+        
+        loginPass = new JPasswordField(); Theme.styleTextField(loginPass); 
+        loginPass.putClientProperty("JTextField.placeholderText","Masukkan password..."); 
+        loginPass.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        loginPass.setAlignmentX(CENTER_ALIGNMENT);
 
-        loginStatus = new JLabel(" ", SwingConstants.CENTER); loginStatus.setFont(Theme.FONT_SMALL); loginStatus.setAlignmentX(CENTER_ALIGNMENT);
+        loginStatus = new JLabel(" ", SwingConstants.CENTER); 
+        loginStatus.setFont(Theme.FONT_SMALL); 
+        loginStatus.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        loginStatus.setAlignmentX(CENTER_ALIGNMENT);
 
         JButton btnLogin = Theme.createPrimaryButton("  🚀  Masuk ke Sistem  ");
         btnLogin.setAlignmentX(CENTER_ALIGNMENT); btnLogin.setMaximumSize(new Dimension(Integer.MAX_VALUE,46));
@@ -202,7 +251,7 @@ public class LoginFrame extends JFrame {
         JLabel d2=new JLabel("  👨‍💼 Konselor: bk1 / bk1234"); d2.setFont(Theme.FONT_SMALL); d2.setForeground(Theme.TEXT_SECONDARY);
         JLabel d3=new JLabel("  📋 Guru: guru1 / guru123"); d3.setFont(Theme.FONT_SMALL); d3.setForeground(Theme.TEXT_SECONDARY);
         demoCard.add(demoTitle); demoCard.add(d1); demoCard.add(d2); demoCard.add(d3);
-        demoCard.setAlignmentX(LEFT_ALIGNMENT);
+        demoCard.setAlignmentX(CENTER_ALIGNMENT); // Samain alignment
 
         card.add(icon); card.add(Box.createVerticalStrut(8));
         card.add(title); card.add(Box.createVerticalStrut(4));
@@ -222,7 +271,7 @@ public class LoginFrame extends JFrame {
     }
 
     // ─────────────────────────────────────
-    // REGISTER PANEL
+    // REGISTER PANEL 
     // ─────────────────────────────────────
     private JPanel buildRegisterPanel() {
         JPanel wrapper = new JPanel(new GridBagLayout());
@@ -233,38 +282,110 @@ public class LoginFrame extends JFrame {
                 super.paintComponent(g);
                 Graphics2D g2=(Graphics2D)g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(new Color(255,255,255,18)); g2.fillRoundRect(0,0,getWidth(),getHeight(),24,24);
+                
+                Color bg = UIManager.getColor("Panel.background");
+                g2.setColor(new Color(bg.getRed(), bg.getGreen(), bg.getBlue(), 150)); 
+                g2.fillRoundRect(0,0,getWidth(),getHeight(),24,24);
+                
                 g2.setColor(Theme.GLASS_BORDER); g2.setStroke(new BasicStroke(1f));
                 g2.drawRoundRect(0,0,getWidth()-1,getHeight()-1,24,24); g2.dispose();
             }
         };
         card.setOpaque(false);
         card.setLayout(new BoxLayout(card,BoxLayout.Y_AXIS));
-        card.setBorder(BorderFactory.createEmptyBorder(32,50,32,50));
-        card.setPreferredSize(new Dimension(480,580));
+        card.setBorder(BorderFactory.createEmptyBorder(20,50,32,50)); 
 
-        JLabel icon=new JLabel("📝",SwingConstants.CENTER); icon.setFont(new Font(Font.DIALOG,Font.PLAIN,36)); icon.setAlignmentX(CENTER_ALIGNMENT);
-        JLabel title=new JLabel("Buat Akun Baru",SwingConstants.CENTER); title.setFont(new Font(Font.DIALOG,Font.BOLD,24)); title.setForeground(Theme.TEXT_WHITE); title.setAlignmentX(CENTER_ALIGNMENT);
+        // Tombol Kembali
+        JPanel topRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        topRow.setOpaque(false);
+        topRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+        
+        JButton btnBack = new JButton("<html><b>&larr; Kembali</b></html>");
+        btnBack.setContentAreaFilled(false);
+        btnBack.setBorderPainted(false);
+        btnBack.setForeground(Theme.TEXT_MUTED);
+        btnBack.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnBack.addActionListener(e -> {
+            cardLayout.show(cardPanel, "login");
+            clearReg();
+        });
+        topRow.add(btnBack);
 
-        JLabel namaLbl=Theme.createLabel("Nama Lengkap *"); namaLbl.setAlignmentX(LEFT_ALIGNMENT);
-        regNama=Theme.createTextField(); regNama.putClientProperty("JTextField.placeholderText","Nama lengkap Anda"); regNama.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        JLabel icon = new JLabel("📝", SwingConstants.CENTER); 
+        icon.setFont(new Font(Font.DIALOG, Font.PLAIN, 36)); 
+        icon.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50)); 
+        icon.setAlignmentX(CENTER_ALIGNMENT);
+        
+        JLabel title = new JLabel("Buat Akun Baru", SwingConstants.CENTER); 
+        title.setFont(new Font(Font.DIALOG, Font.BOLD, 24)); 
+        title.setForeground(UIManager.getColor("Label.foreground")); 
+        title.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40)); 
+        title.setAlignmentX(CENTER_ALIGNMENT);
 
-        JLabel userLbl=Theme.createLabel("Username *"); userLbl.setAlignmentX(LEFT_ALIGNMENT);
-        regUsername=Theme.createTextField(); regUsername.putClientProperty("JTextField.placeholderText","Buat username unik"); regUsername.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        // Fields - FIX RATA KIRI
+        JLabel namaLbl=Theme.createLabel("Nama Lengkap *"); 
+        namaLbl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        namaLbl.setHorizontalAlignment(SwingConstants.LEFT);
+        namaLbl.setAlignmentX(CENTER_ALIGNMENT);
+        
+        regNama=Theme.createTextField(); 
+        regNama.putClientProperty("JTextField.placeholderText","Nama lengkap Anda"); 
+        regNama.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        regNama.setAlignmentX(CENTER_ALIGNMENT);
 
-        JLabel emailLbl=Theme.createLabel("Email"); emailLbl.setAlignmentX(LEFT_ALIGNMENT);
-        regEmail=Theme.createTextField(); regEmail.putClientProperty("JTextField.placeholderText","email@sekolah.sch.id"); regEmail.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        JLabel userLbl=Theme.createLabel("Username *"); 
+        userLbl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        userLbl.setHorizontalAlignment(SwingConstants.LEFT);
+        userLbl.setAlignmentX(CENTER_ALIGNMENT);
+        
+        regUsername=Theme.createTextField(); 
+        regUsername.putClientProperty("JTextField.placeholderText","Buat username unik"); 
+        regUsername.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        regUsername.setAlignmentX(CENTER_ALIGNMENT);
 
-        JLabel roleLbl=Theme.createLabel("Role / Jabatan *"); roleLbl.setAlignmentX(LEFT_ALIGNMENT);
-        regRole=Theme.createComboBox(new String[]{"guru – Guru Wali Kelas","konselor – Guru BK / Konselor","admin – Administrator"}); regRole.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        JLabel emailLbl=Theme.createLabel("Email"); 
+        emailLbl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        emailLbl.setHorizontalAlignment(SwingConstants.LEFT);
+        emailLbl.setAlignmentX(CENTER_ALIGNMENT);
+        
+        regEmail=Theme.createTextField(); 
+        regEmail.putClientProperty("JTextField.placeholderText","email@sekolah.sch.id"); 
+        regEmail.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        regEmail.setAlignmentX(CENTER_ALIGNMENT);
 
-        JLabel passLbl=Theme.createLabel("Password * (min 6 karakter)"); passLbl.setAlignmentX(LEFT_ALIGNMENT);
-        regPass=new JPasswordField(); Theme.styleTextField(regPass); regPass.putClientProperty("JTextField.placeholderText","Buat password"); regPass.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        JLabel roleLbl=Theme.createLabel("Role / Jabatan *"); 
+        roleLbl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        roleLbl.setHorizontalAlignment(SwingConstants.LEFT);
+        roleLbl.setAlignmentX(CENTER_ALIGNMENT);
+        
+        regRole=Theme.createComboBox(new String[]{"guru – Guru Wali Kelas","konselor – Guru BK / Konselor","admin – Administrator"}); 
+        regRole.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        regRole.setAlignmentX(CENTER_ALIGNMENT);
 
-        JLabel passCLbl=Theme.createLabel("Konfirmasi Password *"); passCLbl.setAlignmentX(LEFT_ALIGNMENT);
-        regPassConfirm=new JPasswordField(); Theme.styleTextField(regPassConfirm); regPassConfirm.putClientProperty("JTextField.placeholderText","Ulangi password"); regPassConfirm.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        JLabel passLbl=Theme.createLabel("Password * (min 6 karakter)"); 
+        passLbl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        passLbl.setHorizontalAlignment(SwingConstants.LEFT);
+        passLbl.setAlignmentX(CENTER_ALIGNMENT);
+        
+        regPass=new JPasswordField(); Theme.styleTextField(regPass); 
+        regPass.putClientProperty("JTextField.placeholderText","Buat password"); 
+        regPass.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        regPass.setAlignmentX(CENTER_ALIGNMENT);
 
-        regStatus=new JLabel(" ",SwingConstants.CENTER); regStatus.setFont(Theme.FONT_SMALL); regStatus.setAlignmentX(CENTER_ALIGNMENT);
+        JLabel passCLbl=Theme.createLabel("Konfirmasi Password *"); 
+        passCLbl.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        passCLbl.setHorizontalAlignment(SwingConstants.LEFT);
+        passCLbl.setAlignmentX(CENTER_ALIGNMENT);
+        
+        regPassConfirm=new JPasswordField(); Theme.styleTextField(regPassConfirm); 
+        regPassConfirm.putClientProperty("JTextField.placeholderText","Ulangi password"); 
+        regPassConfirm.setMaximumSize(new Dimension(Integer.MAX_VALUE,44));
+        regPassConfirm.setAlignmentX(CENTER_ALIGNMENT);
+
+        regStatus=new JLabel(" ",SwingConstants.CENTER); 
+        regStatus.setFont(Theme.FONT_SMALL); 
+        regStatus.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+        regStatus.setAlignmentX(CENTER_ALIGNMENT);
 
         JButton btnReg=Theme.createSuccessButton("  ✅  Daftar Sekarang  ");
         btnReg.setAlignmentX(CENTER_ALIGNMENT); btnReg.setMaximumSize(new Dimension(Integer.MAX_VALUE,46));
@@ -275,6 +396,7 @@ public class LoginFrame extends JFrame {
         JButton toLog=new JButton("Masuk di sini"); toLog.setBorderPainted(false); toLog.setContentAreaFilled(false); toLog.setForeground(Theme.ACCENT_BLUE); toLog.setFont(new Font(Font.DIALOG,Font.BOLD,12)); toLog.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)); toLog.addActionListener(e->cardLayout.show(cardPanel,"login"));
         loginRow.add(hasAcc); loginRow.add(toLog);
 
+        card.add(topRow); card.add(Box.createVerticalStrut(5));
         card.add(icon); card.add(Box.createVerticalStrut(6));
         card.add(title); card.add(Box.createVerticalStrut(20));
         card.add(namaLbl); card.add(Box.createVerticalStrut(5)); card.add(regNama); card.add(Box.createVerticalStrut(10));
@@ -287,8 +409,17 @@ public class LoginFrame extends JFrame {
         card.add(btnReg); card.add(Box.createVerticalStrut(14));
         card.add(loginRow);
 
+        // ScrollPane untuk Register Form
+        JScrollPane scrollPane = new JScrollPane(card);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(false); 
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.setPreferredSize(new Dimension(480, 580)); 
+
         GridBagConstraints gbc=new GridBagConstraints(); gbc.anchor=GridBagConstraints.CENTER;
-        wrapper.add(card,gbc);
+        wrapper.add(scrollPane,gbc); 
         return wrapper;
     }
 
@@ -343,7 +474,7 @@ public class LoginFrame extends JFrame {
     }
 
     private void setStatus(JLabel lbl, String msg, Color c){lbl.setText(msg);lbl.setForeground(c);}
-    private void clearReg(){regNama.setText("");regUsername.setText("");regEmail.setText("");regPass.setText("");regPassConfirm.setText("");regRole.setSelectedIndex(0);}
+    private void clearReg(){regNama.setText("");regUsername.setText("");regEmail.setText("");regPass.setText("");regPassConfirm.setText("");regRole.setSelectedIndex(0); regStatus.setText(" ");}
 
     public static String hash(String input) {
         try {

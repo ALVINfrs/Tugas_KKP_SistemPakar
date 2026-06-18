@@ -12,6 +12,7 @@ import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
+import com.sistempakar.util.ReportGenerator;
 
 /**
  * Form Konsultasi – Transaksi Utama
@@ -147,7 +148,6 @@ public class FormKonsultasi extends JPanel {
         g.gridx=1;g.weightx=1; form.add(cbKonselor,g);
 
         cbSiswa.addActionListener(e -> loadSiswaProfil());
-        cbKonselor.addActionListener(e -> { if ("konselor".equals(loginRole)||"guru".equals(loginRole)) {} });
 
         taSiswaProfil = Theme.createTextArea(); taSiswaProfil.setRows(8); taSiswaProfil.setEditable(false);
         JScrollPane sp=Theme.createScrollPane(taSiswaProfil);
@@ -466,7 +466,7 @@ public class FormKonsultasi extends JPanel {
         // Action buttons
         JPanel actionRow=new JPanel(new FlowLayout(FlowLayout.CENTER,12,0)); actionRow.setOpaque(false);
         JButton btnSave=Theme.createSuccessButton("💾 Simpan Konsultasi");
-        JButton btnPDF =Theme.createPrimaryButton("📄 Export PDF");
+        JButton btnPDF =Theme.createPrimaryButton("📄 Export PDF Lengkap");
         JButton btnNew =Theme.createSecondaryButton("🆕 Konsultasi Baru");
         btnSave.addActionListener(e->saveKonsultasi());
         btnPDF.addActionListener(e->exportNotaPDF());
@@ -514,57 +514,30 @@ public class FormKonsultasi extends JPanel {
                 }
             }
 
-            JOptionPane.showMessageDialog(this,"✅ Konsultasi berhasil disimpan!\nNo: KNS-...","Sukses",JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this,"✅ Konsultasi berhasil disimpan!\nNo: "+noK,"Sukses",JOptionPane.INFORMATION_MESSAGE);
             lblStatus.setText("✅ Konsultasi tersimpan – No: "+noK);
         }catch(Exception e){JOptionPane.showMessageDialog(this,"Gagal menyimpan: "+e.getMessage(),"Error",JOptionPane.ERROR_MESSAGE);}
     }
 
     private void exportNotaPDF() {
-        JFileChooser fc=new JFileChooser(); fc.setDialogTitle("Simpan Nota Konsultasi PDF");
-        fc.setSelectedFile(new java.io.File("Nota_Konsultasi_"+new SimpleDateFormat("yyyyMMdd").format(new java.util.Date())+".pdf"));
-        if(fc.showSaveDialog(this)==JFileChooser.APPROVE_OPTION){
-            new SwingWorker<Void,Void>(){
-                @Override protected Void doInBackground() throws Exception{generatePDF(fc.getSelectedFile().getAbsolutePath());return null;}
-                @Override protected void done(){JOptionPane.showMessageDialog(FormKonsultasi.this,"Nota PDF berhasil disimpan!","Sukses",JOptionPane.INFORMATION_MESSAGE);}
-            }.execute();
+        if(savedKonsultasiId == -1) {
+            JOptionPane.showMessageDialog(this, "Harap simpan konsultasi terlebih dahulu sebelum meng-export nota.", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
         }
-    }
-
-    private void generatePDF(String path) {
-        try{
-            com.itextpdf.text.Document doc=new com.itextpdf.text.Document();
-            com.itextpdf.text.pdf.PdfWriter.getInstance(doc,new java.io.FileOutputStream(path));
-            doc.open();
-            com.itextpdf.text.Font tf=com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA_BOLD,16);
-            com.itextpdf.text.Font bf=com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA_BOLD,11);
-            com.itextpdf.text.Font nf=com.itextpdf.text.FontFactory.getFont(com.itextpdf.text.FontFactory.HELVETICA,10);
-
-            com.itextpdf.text.Paragraph p=new com.itextpdf.text.Paragraph("NOTA HASIL KONSULTASI KARIR & REKOMENDASI JURUSAN",tf);p.setAlignment(com.itextpdf.text.Element.ALIGN_CENTER);doc.add(p);
-            doc.add(new com.itextpdf.text.Paragraph("Sistem Pakar Rekomendasi Jurusan | Metode Forward Chaining",nf));
-            doc.add(new com.itextpdf.text.Paragraph("Tanggal: "+new SimpleDateFormat("dd MMMM yyyy HH:mm",new Locale("id","ID")).format(new java.util.Date()),nf));
-            doc.add(new com.itextpdf.text.Paragraph("Siswa: "+(cbSiswa.getSelectedItem()!=null?cbSiswa.getSelectedItem():""),nf));
-            doc.add(new com.itextpdf.text.Paragraph("Konselor: "+(cbKonselor.getSelectedItem()!=null?cbKonselor.getSelectedItem():""),nf));
-            doc.add(new com.itextpdf.text.Paragraph(" "));
-
-            doc.add(new com.itextpdf.text.Paragraph("SKOR PSIKOTEST:",bf));
-            if(faktaResult!=null)doc.add(new com.itextpdf.text.Paragraph(faktaResult.toString(),nf));
-            doc.add(new com.itextpdf.text.Paragraph(" "));
-
-            doc.add(new com.itextpdf.text.Paragraph("REKOMENDASI JURUSAN:",bf));
-            int rn=1;
-            for(ForwardChaining.HasilRekomendasi rek:hasilRekList){
-                doc.add(new com.itextpdf.text.Paragraph(rn+". "+rek.namaJurusan+" ("+rek.kategori+") – Confidence: "+String.format("%.1f%%",rek.confidence),nf));
-                for(int i=0;i<Math.min(3,rek.universitas.size());i++){ForwardChaining.HasilRekomendasi.RekomendasiUniv u=rek.universitas.get(i);doc.add(new com.itextpdf.text.Paragraph("   "+u.namaUniv+" – Peluang: "+String.format("%.1f%%",u.peluangPersonal),nf));}
-                rn++;
+        
+        JFileChooser fc=new JFileChooser(); fc.setDialogTitle("Simpan Nota Konsultasi PDF Lengkap");
+        String sNama = cbSiswa.getSelectedIndex()>=0 ? cbSiswa.getSelectedItem().toString().replaceAll("\\[.*?\\] ", "") : "Siswa";
+        fc.setSelectedFile(new java.io.File("Laporan_Detail_" + sNama.replace(" ","_") + "_" + new SimpleDateFormat("yyyyMMdd").format(new java.util.Date()) + ".pdf"));
+        if(fc.showSaveDialog(this)==JFileChooser.APPROVE_OPTION){
+            try {
+                // Call the advanced ReportGenerator instead of basic nota
+                ReportGenerator.generatePremiumReport(savedKonsultasiId, fc.getSelectedFile().getAbsolutePath());
+                JOptionPane.showMessageDialog(this,"Laporan lengkap PDF berhasil disimpan!","Sukses",JOptionPane.INFORMATION_MESSAGE);
+                Desktop.getDesktop().open(fc.getSelectedFile());
+            } catch(Exception e) {
+                JOptionPane.showMessageDialog(this,"Gagal export PDF: "+e.getMessage(),"Error",JOptionPane.ERROR_MESSAGE);
             }
-            doc.add(new com.itextpdf.text.Paragraph(" "));
-            doc.add(new com.itextpdf.text.Paragraph("CATATAN KONSELOR:",bf));
-            doc.add(new com.itextpdf.text.Paragraph(taCatatanKonselor.getText().isEmpty()?"(Tidak ada catatan tambahan)":taCatatanKonselor.getText(),nf));
-            doc.add(new com.itextpdf.text.Paragraph(" "));
-            doc.add(new com.itextpdf.text.Paragraph("TIPS BELAJAR:",bf));
-            doc.add(new com.itextpdf.text.Paragraph(taTipsBelajar.getText().replaceAll("[^\\x00-\\x7F]",""),nf));
-            doc.close();
-        }catch(Exception e){JOptionPane.showMessageDialog(this,"Gagal PDF: "+e.getMessage(),"Error",JOptionPane.ERROR_MESSAGE);}
+        }
     }
 
     // ── NAVIGATION ────────────────────────────────────────────
